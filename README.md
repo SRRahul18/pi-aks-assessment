@@ -42,6 +42,7 @@ Assumptions:
 8. For container insights/logs enable container insights and send the container logs to log anayltics workspace. Also use DCR with transformation to filter the logs to save the cost
 9. As automate upgrade is enable create a maintenance window for cluster and node image upgrade
 10. To avoid multiple repo terraform modules are kept under the same repo with application code. For real case use different repo to keep terraform reusable modules
+11. Custom Keda Object and Trigger authentication CRD should be deployed to use KEDA scaling for prometheus or other sources
 
 ### Repository Structure
 ```
