@@ -66,7 +66,7 @@ Assumptions:
 |---------|--------------|-----------------------------|
 | **Network** | Creates Virtual Network, Subnets, NSGs | Network isolation, Private subnets |
 | **ACR** | Creates Azure Container Registry | Admin disabled, RBAC-integrated |
-| **AKS** | Provisions cluster | RBAC enabled, AAD integration, Network Policy, Key Vault CSI Driver, Istio, KEDA, Image Cleaner |
+| **AKS** | Provisions cluster | RBAC enabled, AAD integration, Network Policy, Key Vault CSI Driver, KEDA, Image Cleaner |
 | **Key Vault** | Stores secrets securely | Access controlled via Managed Identity |
 | **Monitor** | Deploys Prometheus & Grafana via Helm | Namespace isolation, persistent storage |
 
