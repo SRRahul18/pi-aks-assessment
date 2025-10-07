@@ -7,8 +7,10 @@ The setup ensures:
 - Secure and modular infrastructure provisioning using **Terraform**
 - PR **Validation** pipeline for validating application and infra changes before merge.
 - **Continuous Integration/Deployment (CI/CD)** using Github Actions
+- Linting kubernetes manifest using kube-linter
+- Kubernetes deployments through Kustomize
 - **Security scanning** of Infrastructure as Code (IaC) using **Checkov**
-- **End-to-end monitoring** using **Prometheus** and **Grafana**
+- **End-to-end monitoring** using **Prometheus** and **Grafana** using Helm
 ---
 
 ## Architecture Overview
