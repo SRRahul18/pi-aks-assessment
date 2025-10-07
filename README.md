@@ -108,7 +108,7 @@ AKS Cluster in Azure Portal
 ### App Setup
 A sample node js app was containerized and pushed to ACR via the CI/CD pipeline. Workflow application-deployment-cicd.yaml is used for application deployment This workflow deals with building the docker app and pushing to ACR as build job. Also it has a deployment job to authenticate to azure, setting the manifest and deploy using kubcectl. Pipeline also checks the rollout status and if rollout failed rollback happens automatically by explicitly failing the task to monitor the failure
 
-Application also has a PR validation workflow (hello-node-gated.yaml) which docker build the app, linting kubernetes yaml using kube-lint and kubecl diff for validation before PR merge. In addition we also use Sonarqube and Tricy scan for static code and docker image analysing. (Not implemented)
+Application also has a PR validation workflow (hello-node-gated.yaml) which docker build the app, linting kubernetes yaml using kube-lint and kubecl diff for validation before PR merge. In addition we can also use Sonarqube and Trivy scan for static code and docker image analysing. (Not implemented)
 
 Kubernetes yaml are configured with Kustomize using Base and Overlay folder to patch the yaml for muliple enviornments during deployment.
 <img width="2587" height="695" alt="image" src="https://github.com/user-attachments/assets/70a53d24-fee3-44ea-94d0-ee58c046466d" />
@@ -131,7 +131,7 @@ Kubernetes yaml are configured with Kustomize using Base and Overlay folder to p
 3. Environments are created (Dev & Prod) to use within deployment job to pick the environment. Also environment wise variables and secrets are used inside the workflow
 4. Gated pipelines use Pull request as trigger
 5. CICD pipelines uses Push trigger on main branch
-6. permissions: id-token: write is used. This permission allows the GitHub Actions workflow to request an OpenID Connect (OIDC) token from GitHub’s identity provider. That token is then used to authenticate to cloud providers (like Azure, AWS, or GCP) without using long-lived secrets.
+6. permissions: id-token: write is used. This permission allows the GitHub Actions workflow to request an OpenID Connect (OIDC) token from GitHub’s identity provider. That token is then used to authenticate to azure without using long-lived secrets.
 
 ---
 
