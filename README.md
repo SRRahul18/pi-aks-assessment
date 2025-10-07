@@ -1,4 +1,4 @@
-# Azure AKS Production-like Environment — End-to-End Deployment & Monitoring
+# Azure AKS Sample App Environment — End-to-End Deployment & Monitoring
 
 ##  Objective
 The objective of this project is to **provision a production-grade Azure Kubernetes Service (AKS)** environment for a sample web application.(This app use a simple node js app expose four end points "/ping","/current-date","/fibo/","/metrics)
