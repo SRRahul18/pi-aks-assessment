@@ -39,6 +39,7 @@ Assumptions:
 7. Required azure policies and initiatives should be created and assigned to the cluster resource group
 8. For container insights/logs enable container insights and send the container logs to log anayltics workspace. Also use DCR with transformation to filter the logs to save the cost
 9. As automate upgrade is enable create a maintenance window for cluster and node image upgrade
+10. To avoid multiple repo terraform modules are kept under the same repo with application code. For real case use different repo to keep terraform reusable modules
 
 ### Repository Structure
 ```
