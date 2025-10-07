@@ -46,7 +46,7 @@ Assumptions:
 
 ### Repository Structure
 ```
-├── terraform-root-repo/
+├── infrastructure/
 │ ├── main.tf
 │ ├── backend.tf
 │ ├── providers.tf
@@ -59,8 +59,6 @@ Assumptions:
 │ │ ├── keyvault/
 │ │ └── monitor/
 │ └── .github/workflow
-│ ├── terraform-validate.yml
-│ └── terraform-deploy.yml
 ```
 
 ### Terraform Modules
@@ -84,13 +82,13 @@ Assumptions:
 8. **OS Disk type** used is Ephemeral for faster auto scale operations
 9. **Automatic Upgrade** set as stable
 
- Further enhancements: For additional security we can enable **Istio service mesh** to MTLS authentication between service to service communication or **Cilium data plane** for Network policy
+ Further enhancements: For additional security we can enable **Istio service mesh** for MTLS authentication between service to service communication or **Cilium data plane** for Network policy
 
 ---
 
 ## Terraform Scanning using Checkov
 
-Terraform validation and Checkov scanning is integrated into Infra-Validation workflow with infra-validation.yaml file. This workflow is triggered based on PR request so that if any checks failed will block the PR to merge with main branch keeping main branch secure and error free. This workflow checks for Terraform validate, checkov scans and terraform plan
+Terraform validation and Checkov scanning is integrated into Infra-Validation workflow with infra-gated-validation.yaml file. This workflow is triggered based on PR request so that if any checks failed will block the PR to merge with main branch keeping main branch secure and error free. This workflow checks for Terraform validate, checkov scans and terraform plan
 
 <img width="2283" height="1617" alt="image" src="https://github.com/user-attachments/assets/d4d7f2ad-4c0b-4752-8796-2936289c0916" />
 
@@ -99,7 +97,7 @@ Note: Failed ones where of LOW severity, and --soft-fail was provided intentiona
 ---
 
 ## Terraform Deployment
-Infra deployment is seperated out of application deployment as change frequency will be less for infra than application. Terraform deployment worflow is Infra-Deploy with infra-deploy.yaml file and terraform apply is part of this workflow
+Infra deployment is seperated out of application deployment as change frequency will be less for infra than application. Terraform deployment worflow is Infra-Deploy with infra-deployment.yaml file and terraform apply is part of this workflow
 
 AKS Cluster in Azure Portal
 <img width="3195" height="447" alt="image" src="https://github.com/user-attachments/assets/88e76c27-e6bc-4b2e-885f-a965fbbcb723" />
@@ -108,7 +106,7 @@ AKS Cluster in Azure Portal
 ## Application Deployment
 
 ### App Setup
-A sample node js app was containerized and pushed to ACR via the CI/CD pipeline. Workflow hello-node-app.yaml is used for application deployment This workflow deals with building the docker app and pushing to ACR as build job. Also it has a deployment job to authenticate to azure, setting the manifest and deploy using kubcectl. Pipeline also checks the rollout status and if rollout failed rollback happens automatically by explicitly failing the task to monitor the failure
+A sample node js app was containerized and pushed to ACR via the CI/CD pipeline. Workflow application-deployment-cicd.yaml is used for application deployment This workflow deals with building the docker app and pushing to ACR as build job. Also it has a deployment job to authenticate to azure, setting the manifest and deploy using kubcectl. Pipeline also checks the rollout status and if rollout failed rollback happens automatically by explicitly failing the task to monitor the failure
 
 Application also has a PR validation workflow (hello-node-gated.yaml) which docker build the app, linting kubernetes yaml using kube-lint and kubecl diff for validation before PR merge. In addition we also use Sonarqube and Tricy scan for static code and docker image analysing. (Not implemented)
 
