@@ -1,0 +1,71 @@
+name: Infra-Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+env:
+  TF_LOG: INFO
+  ARM_USE_OIDC: true
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+
+jobs:
+  terraform:
+    name: Terraform Deployment
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      # Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Login to Azure using OIDC
+      - name: Azure Login via OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      # Initialize Terraform
+      - name: Terraform Init
+        run: |
+          cd infrastructure
+          terraform init 
+
+      # Validate Terraform code
+      - name: Terraform Validate
+        run: |
+          cd infrastructure
+
+      # Terraform Plan
+      - name: Terraform Plan
+        id: plan
+        run: |
+          cd infrastructure
+          terraform plan -out=tfplan.binary -var-file=dev.tfvars
+          terraform show -no-color tfplan.binary > tfplan.txt
+
+      # Upload plan as artifact for review
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: tfplan.txt
+
+      # Terraform Apply (only on push, not PR)
+      - name: Terraform Apply
+        if: github.event_name == 'push'
+        run: |
+          cd infrastructure
+          terraform apply -auto-approve tfplan.binary

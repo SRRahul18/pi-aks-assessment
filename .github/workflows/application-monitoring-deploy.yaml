@@ -1,0 +1,90 @@
+name: app-monitoring-install
+
+on:
+  workflow_dispatch:   # Manual trigger
+  push:
+    branches:
+      - main
+
+env:
+  NAMESPACE: ${ { vars.NAMESPACE } }
+  PROM_RELEASE_NAME: ${ { vars.PROM_RELEASE_NAME } }
+  GRAFANA_RELEASE_NAME: ${ { vars.GRAFANA_RELEASE_NAME } }
+  GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
+  GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+  RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+  AKS_NAME: ${{ vars.AKS_NAME }} 
+
+jobs:
+  deploy-monitoring-tool:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Install Helm
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+
+      # Step 3: Setup kubectl and K8s credentials
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks install-cli
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.AKS_NAME }} --overwrite-existing
+
+      # Step 5: Add Helm repos
+      - name: Add Helm Repositories
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+
+      # Step 6: Install Prometheus if not installed
+      - name: Install Prometheus if not present
+        run: |
+          if ! helm status $PROM_RELEASE_NAME -n $NAMESPACE >/dev/null 2>&1; then
+            echo "Installing Prometheus..."
+            helm install $PROM_RELEASE_NAME prometheus-community/prometheus \
+              -n $NAMESPACE \
+              --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+              --set prometheus.prometheusSpec.podMonitorSelectorNilUsesHelmValues=false
+          else
+            echo "Prometheus release $PROM_RELEASE_NAME already installed"
+          fi
+
+      # Step 7: Create Grafana admin secret if not exists
+      - name: Create Grafana admin secret
+        run: |
+          if ! kubectl get secret grafana-admin-secret -n $NAMESPACE >/dev/null 2>&1; then
+            kubectl create secret generic grafana-admin-secret \
+              --from-literal=admin-user=$GRAFANA_ADMIN_USER \
+              --from-literal=admin-password=$GRAFANA_ADMIN_PASSWORD \
+              -n $NAMESPACE
+          else
+            echo "Grafana admin secret already exists"
+          fi
+
+      # Step 8: Install Grafana if not installed
+      - name: Install Grafana if not present
+        run: |
+          if ! helm status $GRAFANA_RELEASE_NAME -n $NAMESPACE >/dev/null 2>&1; then
+            echo "Installing Grafana..."
+            helm install $GRAFANA_RELEASE_NAME grafana/grafana \
+              -n $NAMESPACE \
+              --set admin.existingSecret=grafana-admin-secret
+          else
+            echo "Grafana release $GRAFANA_RELEASE_NAME already installed"
+          fi

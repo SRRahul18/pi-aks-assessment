@@ -1,0 +1,70 @@
+name: application-pr-gated
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  ACR_NAME: ${{ vars.ACR_NAME }}    
+  IMAGE_NAME: ${{ vars.IMAGE_NAME }}  
+  IMAGE_TAG: ${{ github.run_number }}-${{ github.sha }}     
+  RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}        
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  AKS_NAME: ${{ vars.AKS_NAME }}               
+  K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}           
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    environment: development
+
+    steps:
+      # Checkout the PR branch
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up Docker Build
+      - name: Build Docker image
+        run: |
+          cd src/
+          docker build -t hello-node:pr-${{ github.run_id }} .
+
+      # Kube-lint scan  
+      - name: Scan yamls
+        id: kube-lint-scan
+        uses: stackrox/kube-linter-action@v1
+        with:
+          directory: src/hello-node-aks
+          config: src/hello-node-aks/kubelinter/config.yaml
+
+      # Azure Login
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      # Get AKS credentials
+      - name: Get AKS Credentials
+        run: |
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.AKS_NAME }} --overwrite-existing
+
+
+      # Validate Kubernetes YAML syntax
+      - name: Validate manifests with kubectl dry-run
+        run: |
+          kubectl diff -k "src/hello-node-aks/overlays/${{ vars.ENVIRONMENT }}" || EXIT_CODE=$?
+          if [ "$EXIT_CODE" -gt 1 ]; then
+              echo "kubectl diff failed with an error."
+              exit $EXIT_CODE
+          else
+              echo "kubectl diff completed (exit code $EXIT_CODE)."
+          fi
+          kubectl apply --dry-run=client -k "src/hello-node-aks/overlays/${{ vars.ENVIRONMENT }}"

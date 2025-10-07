@@ -1,0 +1,106 @@
+name: hello-node-aks-deploy
+
+on:
+  push:
+    branches: [ "main" ]
+    
+env:
+  ACR_NAME: ${{ vars.ACR_NAME }}    
+  IMAGE_NAME: ${{ vars.IMAGE_NAME }}  
+  IMAGE_TAG: ${{ github.run_number }}-${{ github.sha }}     
+  RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}        
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  AKS_NAME: ${{ vars.AKS_NAME }}               
+  K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}       
+  
+jobs:
+  build:
+    permissions:
+      id-token: write
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    # Checkout the code
+    - uses: actions/checkout@v4
+
+    # Authenticate with Azure using Service Principal
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ env.AZURE_CLIENT_ID }}
+        tenant-id: ${{ env.AZURE_TENANT_ID }}
+        subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+        client-secret: ${{ env.AZURE_CLIENT_SECRET }}
+
+    # Log in to ACR
+    - name: Log in to ACR
+      run: |
+        az acr login --name $ACR_NAME
+
+    # Build Docker image
+    - name: Build Docker image
+      run: |
+        cd src/
+        docker build -t $ACR_NAME.azurecr.io/$IMAGE_NAME:${IMAGE_TAG} .
+
+    # Push Docker image
+    - name: Push Docker image
+      run: |
+        docker push $ACR_NAME.azurecr.io/$IMAGE_NAME:${IMAGE_TAG}
+
+  deploy-to-k8s:
+    permissions:
+      id-token: write
+    runs-on: ubuntu-latest
+    environment: development
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Azure login
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      # Get AKS credentials
+      - name: Get AKS Credentials
+        run: |
+          az aks install-cli
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.AKS_NAME }} --overwrite-existing
+          kubelogin convert-kubeconfig --login spn --client-id ${{ secrets.AZURE_CLIENT_ID }} --client-secret ${{ secrets.AZURE_CLIENT_SECRET }}  
+
+      # Replace IMAGE_TAG in manifest template
+      - name: Prepare manifest
+        run: |
+          sed "s|\$ACR_NAME.azurecr.io/\$IMAGE_NAME:\${IMAGE_TAG}|$ACR_NAME.azurecr.io/$IMAGE_NAME:$IMAGE_TAG|g" \
+            src/hello-node-aks/base/hello-node-app.yaml > src/hello-node-aks/base/hello-node-app.tmp.yaml
+          mv src/hello-node-aks/base/hello-node-app.tmp.yaml src/hello-node-aks/base/hello-node-app.yaml
+
+      # Apply manifest to Kubernetes
+      - name: Deploy to Kubernetes
+        run: |
+          set -e
+
+          echo "Applying Kubernetes manifests..."
+          kubectl apply -k "src/hello-node-aks/overlays/${{ vars.ENVIRONMENT }}"
+
+
+          echo "Waiting for rollout..."
+          if ! kubectl rollout status deployment/hello-node -n ${{ env.K8S_NAMESPACE }} --timeout=300s; then
+            echo "Rollout failed. Rolling back..."
+            kubectl rollout undo deployment/hello-node -n ${{ env.K8S_NAMESPACE }}
+            exit 1
+          else
+            echo "Rollout succeeded."
+          fi    
