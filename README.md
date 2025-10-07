@@ -1,7 +1,3 @@
-[![Terraform Deploy to Azure](https://github.com/SRRahul18/aks-assessment/actions/workflows/terraformdeploy.yml/badge.svg)](https://github.com/SRRahul18/aks-assessment/actions/workflows/terraformdeploy.yml)
-[![hello-node-aks-deploy](https://github.com/SRRahul18/aks-assessment/actions/workflows/node.js.yml/badge.svg)](https://github.com/SRRahul18/aks-assessment/actions/workflows/node.js.yml)
-[![helm-monitoring-install](https://github.com/SRRahul18/aks-assessment/actions/workflows/hell-node-app-monitoring.yaml/badge.svg)](https://github.com/SRRahul18/aks-assessment/actions/workflows/hell-node-app-monitoring.yaml)
-
 # Azure AKS Production-like Environment — End-to-End Deployment & Monitoring
 
 ##  Objective
